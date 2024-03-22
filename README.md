@@ -1,7 +1,7 @@
 # LLM Tool Calls
 
 Repository for experimenting with tool calls in LLMs (so far, GPTs hosted in Azure).
-This demo does not use the deprecated `function_calls`.
+This demo does not use the deprecated `function_calls` but instead uses the newer `tool_calls`.
 
 Authentication is done using AD token authorization, not with API keys.
 
