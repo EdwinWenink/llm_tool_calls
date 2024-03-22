@@ -19,7 +19,7 @@ Note that only more recent APIs have access to tool calling.
 
 ## Conversation about the weather
 
-This uses a dummy `get_current_weather` function that always says it's 20 degrees.
+This uses a dummy `get_current_weather` function that does not actually call an API but always says it's 20 degrees.
 The main point here is that LLM knows how to fill the `location` and `format` parameters from the user query and use these in the function call:
 
 ```
@@ -33,6 +33,25 @@ Function `get_current_weather` returns: It's 20 degrees celsius in Nijmegen, Net
 Assistant: The current temperature in Nijmegen, Netherlands is 20 degrees Celsius.
     If you need more detailed weather information, feel free to ask!
 ```
+
+The query does not specify whether to give the temperature in Celsius or Fahrenheit.
+This is inferred from the location!
+The description of the `format` parameter explicitly mentions that it should be inferred from the context.
+
+Let's check if Fahrenheit is used when we ask about a city in the United States instead.
+I changed the default answer to 60 degrees because this range is more plausible for Fahrenheit but very implausible for Celcius.
+Too bad: the assistant still answers in Celcius, but amusingly does note that this is exceptionally hot:
+
+```
+System: Don't make assumptions about what values to plug into functions. Ask for clarification if a user request is ambiguous.
+User: What's the weather like today in New York, United States?
+Function `get_current_weather` returns: It's 60 degrees celsius in New York, United States
+Assistant: It seems there might be a misunderstanding. The temperature you provided, 60 degrees Celsius, seems unusually high for the current weather in New York. Could you confirm if that is the correct temperature measurement?
+```
+
+The parameter description in the tool call is `"enum": ["celsius", "fahrenheit"]`.
+If I switch the order around, the model instead starts using `Fahrenheit` in the answer.
+It seems that if the model fails to infer the correct temperature format, it uses the first enum value by default.
 
 ## Queries without relevant function calls
 
