@@ -1,5 +1,6 @@
-azure-identity==1.15.0
+azure-identity==1.15.1
 openai==1.14.2
 tenacity==8.2.3
 tiktoken==0.6.0
 termcolor==2.4.0
+python-dotenv==1.0.1
