@@ -43,10 +43,16 @@ I changed the default answer to 60 degrees because this range is more plausible 
 Too bad: the assistant still answers in Celcius, but amusingly does note that this is exceptionally hot:
 
 ```
-System: Don't make assumptions about what values to plug into functions. Ask for clarification if a user request is ambiguous.
+System: Don't make assumptions about what values to plug into functions.
+    Ask for clarification if a user request is ambiguous.
+
 User: What's the weather like today in New York, United States?
+
 Function `get_current_weather` returns: It's 60 degrees celsius in New York, United States
-Assistant: It seems there might be a misunderstanding. The temperature you provided, 60 degrees Celsius, seems unusually high for the current weather in New York. Could you confirm if that is the correct temperature measurement?
+
+Assistant: It seems there might be a misunderstanding.
+    The temperature you provided, 60 degrees Celsius, seems unusually high for the current weather in New York.
+    Could you confirm if that is the correct temperature measurement?
 ```
 
 The parameter description in the tool call is `"enum": ["celsius", "fahrenheit"]`.
