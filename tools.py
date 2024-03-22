@@ -30,7 +30,7 @@ tools = [
 
 
 def get_current_weather(location: str, format: str):
-    return f"It's a nice amount of {format} in {location}"
+    return f"It's 20 degrees {format} in {location}"
 
 
 # Dynamically generate mapping of available functions
