@@ -8,7 +8,7 @@ from openai.types.chat import ChatCompletionMessage, ChatCompletionMessageToolCa
 from tenacity import retry, stop_after_attempt, wait_random_exponential
 from termcolor import colored
 
-from tools import available_functions, tools
+from tools import available_functions
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -26,26 +26,12 @@ client = AzureOpenAI(
     azure_ad_token_provider=token_provider,
 )
 
-FUNCTION_CALL_SYSTEM_MESSAGE = "Don't make assumptions about what values to plug into functions. Ask for clarification if a user request is ambiguous."
-
-
-@retry(wait=wait_random_exponential(multiplier=1, max=40), stop=stop_after_attempt(3))
-def chat_completion_request(messages, tools=None, tool_choice=None, model=GPT_MODEL):
-    try:
-        response = client.chat.completions.create(
-            model=model,
-            messages=messages,
-            tools=tools,
-            tool_choice=tool_choice,
-        )
-        return response
-    except Exception as exc:
-        logger.error("Unable to generate ChatCompletion response.")
-        logger.error("Exception: %s", exc)
-        return exc
+TOOL_CALL_SYSTEM_MESSAGE = "Don't make assumptions about what values to plug into functions. Ask for clarification if a user request is ambiguous."
 
 
 class Conversation:
+    """Class to track the conversation history and display the chat in human readable form."""
+
     def __init__(self):
         self.history = []
 
@@ -90,6 +76,41 @@ class Conversation:
                 )
 
 
+def chat(messages: list[dict], tools=None) -> ChatCompletionMessage:
+    chat_response = chat_completion_request(messages, tools=tools)
+
+    # Assistant message
+    choice = chat_response.choices[0]
+
+    # Check if a tool call is required
+    if choice.finish_reason == "tool_calls":
+        logger.info("Tool call requested, calling function")
+        function_message = handle_tool_call(choice.message)
+        messages.append(function_message)
+
+        # Create a new response that used the function call
+        # Set tools=None to avoid doing another tool call.
+        chat_response = chat_completion_request(messages, tools=None)
+
+    return chat_response
+
+
+@retry(wait=wait_random_exponential(multiplier=1, max=40), stop=stop_after_attempt(3))
+def chat_completion_request(messages, tools=None, tool_choice=None, model=GPT_MODEL):
+    try:
+        response = client.chat.completions.create(
+            model=model,
+            messages=messages,
+            tools=tools,
+            tool_choice=tool_choice,
+        )
+        return response
+    except Exception as exc:
+        logger.error("Unable to generate ChatCompletion response.")
+        logger.error("Exception: %s", exc)
+        return exc
+
+
 def handle_tool_call(message: ChatCompletionMessage):
     """NOTE for now not parallel, only does the first tool call"""
     # Do nothing if no tool calls are asked for
@@ -118,31 +139,12 @@ def handle_tool_call(message: ChatCompletionMessage):
         logger.error("Tool call is not available.")
 
 
-def chat(messages: list[dict], tools=None) -> ChatCompletionMessage:
-    chat_response = chat_completion_request(messages, tools=tools)
-
-    # Assistant message
-    choice = chat_response.choices[0]
-
-    # Check if a tool call is required
-    if choice.finish_reason == "tool_calls":
-        logger.info("Tool call requested, calling function")
-        function_message = handle_tool_call(choice.message)
-        messages.append(function_message)
-
-        # Create a new response that used the function call
-        # Set tools=None to avoid doing another tool call.
-        chat_response = chat_completion_request(messages, tools=None)
-
-    return chat_response
-
-
-def weather_conversation():
+def run_conversation(user_query: str, tools=None):
     conversation = Conversation()
-    conversation.add_message("system", FUNCTION_CALL_SYSTEM_MESSAGE)
+    conversation.add_message("system", TOOL_CALL_SYSTEM_MESSAGE)
 
     # User query
-    conversation.add_message("user", "What's the weather like today in Nijmegen, Netherlands?")
+    conversation.add_message("user", user_query)
     chat_response = chat(conversation.history, tools=tools)
 
     # Answer of the assistant, including tool call
@@ -153,10 +155,18 @@ def weather_conversation():
     print("All completions:\n----------------")
     for message in conversation.history:
         print(message)
+    print()
 
     # A human readable printout of the conversation
     conversation.pretty_print_conversation()
 
 
 if __name__ == "__main__":
-    weather_conversation()
+    # For this weather query, a tool call is available
+    run_conversation("What's the weather like today in Nijmegen, Netherlands?", tools=tools)
+
+    # This query is completely unrelated, but we pass tools anyways
+    run_conversation("Tell me something interesting", tools=tools)
+
+    # This query is completely unrelated and we do not pass tools
+    run_conversation("Tell me something interesting", tools=None)
