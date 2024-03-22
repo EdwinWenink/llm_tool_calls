@@ -174,3 +174,6 @@ if __name__ == "__main__":
 
     # This query is completely unrelated and we do not pass tools
     run_conversation("Tell me something interesting", tools=None)
+
+    # Related to the train disruptions call
+    run_conversation("Zijn er momenteel treinstoringen?", tools=tools)

@@ -88,3 +88,31 @@ Assistant: Did you know that honey never spoils? Archaeologists have found pots 
     The long shelf life of honey is due to its low moisture content and acidic pH,
     which create an inhospitable environment for bacteria and microorganisms.
 ```
+
+## Train Disruptions API
+
+Add `NS_APP_KEY` to `.env`.
+
+The second tool queries an NS Disruptions API (you can make an account [here](https://apiportal.ns.nl/)) for current disruptions in train operations.
+
+The following conversation was run on 22-03-2024 around 8:30 PM (in Dutch):
+
+```
+System: Don't make assumptions about what values to plug into functions. Ask for clarification if a user request is ambiguous.
+
+User: Zijn er momenteel treinstoringen?
+
+Function `get_all_train_disruptions` returns: Groningen - Leer. werkzaamheden
+    Amsterdam - Rotterdam - Breda. beperkingen materieel
+
+Assistant: Er zijn momenteel twee treinstoringen:
+
+1. Tussen Groningen en Leer zijn er werkzaamheden.
+2. Op de route Amsterdam - Rotterdam - Breda zijn er beperkingen vanwege materieel.
+
+Laat me weten als je nog meer informatie nodig hebt!
+```
+
+For reference, this was the overview of disruptions on ns.nl at the same time:
+
+![03-2024-disruptions]( 22-03-2024-disruptions.png )
