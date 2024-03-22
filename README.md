@@ -115,4 +115,4 @@ Laat me weten als je nog meer informatie nodig hebt!
 
 For reference, this was the overview of disruptions on ns.nl at the same time:
 
-![03-2024-disruptions]( 22-03-2024-disruptions.png )
+![03-2024-disruptions]( data/22-03-2024-disruptions.png )
