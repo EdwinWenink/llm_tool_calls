@@ -177,3 +177,8 @@ if __name__ == "__main__":
 
     # Related to the train disruptions call
     run_conversation("Zijn er momenteel treinstoringen?", tools=tools)
+
+    # Ask about disruptions on a specific train station
+    run_conversation("Zijn er momenteel treinstoringen rondom station Amsterdam?", tools=tools)
+    run_conversation("Zijn er momenteel treinstoringen rondom station Nijmegen?", tools=tools)
+    run_conversation("Zijn er momenteel treinstoringen rondom station Rotterdam?", tools=tools)

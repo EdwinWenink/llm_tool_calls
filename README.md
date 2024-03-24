@@ -59,6 +59,9 @@ The parameter description in the tool call is `"enum": ["celsius", "fahrenheit"]
 If I switch the order around, the model instead starts using `Fahrenheit` in the answer.
 It seems that if the model fails to infer the correct temperature format, it uses the first enum value by default.
 
+These experiments were done using `gpt-3.5-turbo-1106`.
+TODO: The newer models are reported to be better at filling in tool parameters, so we should redo this experiment and see if the result differ.
+
 ## Queries without relevant function calls
 
 When the user makes a query that is not related to any of the available tools, it should not call any tools.
@@ -122,3 +125,75 @@ Laat me weten als je nog meer informatie nodig hebt!
 For reference, this was the overview of disruptions on ns.nl at the same time:
 
 ![03-2024-disruptions]( data/22-03-2024-disruptions.png )
+
+This works great, but this API call does not require any parameters.
+Let's try to do something a bit more specific.
+
+A third tool calls a function to return any disruptions related to a specific train station.
+The API call requires a station code.
+Each train station has a [unique code](https://wiki.ovinnederland.nl/wiki/Lijst_van_verkortingen_van_treinstations).
+For example, the code for Nijmegen is 'Nm' and the code for Amsterdam is 'Asd'.
+These codes are public knowledge and do not change (but of course, over longer periods of time new stations may be added or old stations taken out of service).
+
+The challenge here is to see if the LLM knows how to translate a question about station "Nijmegen" into an API call with code "Nm".
+In the tool description, I described the parameter `station_code` as follows: "The official station code abbrevation, e.g. 'Nm' for station Nijmegen and 'Asd' for Amsterdam.".
+
+For reference, at the moment of this experiment this is the situation:
+![03-2024-disruptions]( data/24-03-2024-disruptions.png )
+
+First, I ask about disruptions about Amsterdam:
+
+```
+System: Don't make assumptions about what values to plug into functions. Ask for clarification if a user request is ambiguous.
+
+User: Zijn er momenteel treinstoringen rondom station Amsterdam?
+
+Function `get_disruptions_for_train_station` returns:
+    Amsterdam - Rotterdam - Brussel. werkzaamheden
+    Zwolle - Groningen. werkzaamheden
+    Amsterdam - Schiphol. werkzaamheden
+    Amsterdam - Rotterdam - Breda. beperkingen materieel
+
+Assistant: Momenteel zijn er enkele treinstoringen rond station Amsterdam.
+Er zijn werkzaamheden op de Amsterdam-Rotterdam-Brussel route, de Zwolle-Groningen route, en de Amsterdam-Schiphol route.
+Daarnaast zijn er beperkingen in materieel op de Amsterdam-Rotterdam-Breda route.
+```
+
+Correct!
+I don't understand why Zwolle and Groningen are returned by the API call, but this is not a problem with the LLM.
+
+Now we ask about Nijmegen, where luckily the trains are driving on time (I'm taking the train here in 30 min).
+
+```
+System: Don't make assumptions about what values to plug into functions. Ask for clarification if a user request is ambiguous.
+
+User: Zijn er momenteel treinstoringen rondom station Nijmegen?
+
+Function `get_disruptions_for_train_station` returns: Er zijn geen verstoringen bekend voor station Nm.
+
+Assistant: Op dit moment zijn er geen treinstoringen rondom station Nijmegen bekend.
+```
+
+In both cases the answers were awesome!
+In the question about Nijmegen, we also clearly see in the function response that the LLM correctly translated "Nijmegen" to "Nm".
+
+Of course, 'Nm' and 'Asd' were the two examples I provided in the parameter description.
+Let's see if the LLM understand a question about Rotterdam ('Rtd').
+
+```
+System: Don't make assumptions about what values to plug into functions. Ask for clarification if a user request is ambiguous.
+
+User: Zijn er momenteel treinstoringen rondom station Rotterdam?
+
+Function `get_disruptions_for_train_station` returns:
+    Amsterdam - Rotterdam - Brussel. werkzaamheden
+    Amsterdam - Schiphol. werkzaamheden
+    Den Haag - Rotterdam - Dordrecht. werkzaamheden
+    Amsterdam - Rotterdam - Breda. beperkingen materieel
+
+Assistant: Ja, er zijn momenteel treinstoringen rondom station Rotterdam vanwege werkzaamheden en beperkingen van materieel op verschillende trajecten.
+```
+
+Still seems to work great!
+I'm quite impressed by these results, because typically quite a bit of effort goes into normalizing station names to station codes.
+The LLM handles this natively.
