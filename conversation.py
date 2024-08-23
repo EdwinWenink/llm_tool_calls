@@ -1,30 +1,20 @@
 import json
 import logging
-import os
 
-from azure.identity import DefaultAzureCredential, get_bearer_token_provider
-from openai import AzureOpenAI
 from openai.types.chat import ChatCompletionMessage, ChatCompletionMessageToolCall
 from tenacity import retry, stop_after_attempt, wait_random_exponential
 from termcolor import colored
 
-from tools import available_functions, tools
+from chat_client import AzureOpenAIChatClient
+from tools import available_functions
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 # Globals
-# Your deployment name with a model supporting tools (version 1106 at minimum)
-GPT_MODEL = "gpt_turbo"
-token_provider = get_bearer_token_provider(
-    DefaultAzureCredential(), "https://cognitiveservices.azure.com/.default"
-)
+# -------
 
-client = AzureOpenAI(
-    api_version=os.getenv("API_VERSION"),
-    azure_endpoint=os.getenv("AZURE_OPENAI_ENDPOINT"),
-    azure_ad_token_provider=token_provider,
-)
+CLIENT = AzureOpenAIChatClient(deployment_name="gpt_turbo")
 
 TOOL_CALL_SYSTEM_MESSAGE = "Don't make assumptions about what values to plug into functions. Ask for clarification if a user request is ambiguous."
 
@@ -50,7 +40,7 @@ class Conversation:
         for message in self.history:
             # Convert Pydantic models to dict for consistent behavior
             if isinstance(message, ChatCompletionMessage):
-                message = message.dict()
+                message = message.model_dump()
 
             if message["role"] == "system":
                 print(colored(f"System: {message['content']}", role_to_color[message["role"]]))
@@ -96,10 +86,9 @@ def chat(messages: list[dict], tools=None) -> ChatCompletionMessage:
 
 
 @retry(wait=wait_random_exponential(multiplier=1, max=40), stop=stop_after_attempt(3))
-def chat_completion_request(messages, tools=None, tool_choice=None, model=GPT_MODEL):
+def chat_completion_request(messages, tools=None, tool_choice=None):
     try:
-        response = client.chat.completions.create(
-            model=model,
+        response = CLIENT.create_completion(
             messages=messages,
             tools=tools,
             tool_choice=tool_choice,
@@ -112,12 +101,12 @@ def chat_completion_request(messages, tools=None, tool_choice=None, model=GPT_MO
 
 
 def handle_tool_call(message: ChatCompletionMessage):
-    """NOTE for now not parallel, only does the first tool call"""
+    """NOTE for now not parallel, only handles the first relevant tool call"""
     # Do nothing if no tool calls are asked for
     if not message.tool_calls:
         return
 
-    # TODO handle multiple tool calls `for tool_call in tool_calls`
+    # TODO handle multiple tool calls; `for tool_call in tool_calls`
     try:
         tool_call: ChatCompletionMessageToolCall = message.tool_calls[0]
         function_name = tool_call.function.name
@@ -159,26 +148,3 @@ def run_conversation(user_query: str, tools=None):
 
     # A human readable printout of the conversation
     conversation.pretty_print_conversation()
-
-
-if __name__ == "__main__":
-    # For this weather query, a tool call is available
-    run_conversation("What's the weather like today in Nijmegen, Netherlands?", tools=tools)
-
-    # As a weather question about a place where Fahrenheit is used
-    # run_conversation("What's the weather like today in George Town, Cayman Islands?", tools=tools)
-    run_conversation("What's the weather like today in New York, United States?", tools=tools)
-
-    # This query is completely unrelated, but we pass tools anyways
-    run_conversation("Tell me something interesting", tools=tools)
-
-    # This query is completely unrelated and we do not pass tools
-    run_conversation("Tell me something interesting", tools=None)
-
-    # Related to the train disruptions call
-    run_conversation("Zijn er momenteel treinstoringen?", tools=tools)
-
-    # Ask about disruptions on a specific train station
-    run_conversation("Zijn er momenteel treinstoringen rondom station Amsterdam?", tools=tools)
-    run_conversation("Zijn er momenteel treinstoringen rondom station Nijmegen?", tools=tools)
-    run_conversation("Zijn er momenteel treinstoringen rondom station Rotterdam?", tools=tools)
