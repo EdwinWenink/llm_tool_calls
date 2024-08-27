@@ -1,20 +1,18 @@
 import os
 from abc import ABC, abstractmethod
 
+import requests
 from azure.identity import DefaultAzureCredential, get_bearer_token_provider
 from openai import AzureOpenAI
-from openai.types.chat import (
-    ChatCompletion,
-    ChatCompletionMessage,
-    ChatCompletionMessageToolCall,
-)
+from openai.types.chat import ChatCompletion
 
 
-# Make an abstract class called ChatClient that has a method called chat
-# that takes a list of messages and returns a ChatCompletionMessage.
 class ChatClient(ABC):
+    """
+    Generic interface for a chat client that creates completions.
+    """
     @abstractmethod
-    def create_completion(self, messages, tools=None, tool_choice=None):
+    def create_completion(self, messages, tools=None, tool_choice=None) -> ChatCompletion:
         pass
 
 
@@ -46,13 +44,44 @@ class AzureOpenAIChatClient(ChatClient):
             tools=tools,
             tool_choice=tool_choice,
         )
+
         return response
-
-
 
 
 class RequestsClient(ChatClient):
     """
     This client uses a REST API to talk with a deployment.
     """
-    pass
+
+    def __init__(self, endpoint_url: str):
+        API_KEY = os.getenv("NS_APIM_KEY")
+        assert API_KEY, "Please set the NS_APIM_KEY environment variable."
+        self.url = endpoint_url
+        self.headers = {
+            "Content-Type": "application/json",
+            "User-Agent": "Tool Calling Demo",
+            "Ocp-Apim-Subscription-Key": API_KEY,
+        }
+
+    def create_completion(self, messages, tools=None, tool_choice=None) -> ChatCompletion:
+        body = {"messages": messages,
+                "stream": False}
+
+        if tools:
+            body["tools"] = tools
+            '''
+            if tool_choice:
+                body["tool_choice"] = tool_choice
+            # else:
+                # body["tool_choice"] = "auto"  # Default behavior when tools are provided
+            '''
+        response = requests.post(
+            self.url,
+            headers=self.headers,
+            json=body,
+            timeout=60
+        )
+
+        # Cast json response in the ChatCompletion object
+        completion = ChatCompletion(**response.json())
+        return completion

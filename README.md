@@ -12,9 +12,12 @@ Set the following variables in `.env`:
 ```
 AZURE_OPENAI_ENDPOINT=
 API_VERSION=
+NS_APP_KEY=  # API key for the NS App to retrieve disruption data
+NS_APIM_KEY=  # API key for the ChatNS API returning completions
+DEPLOYMENT_NAME=  # Name of the model deployment generating completions
 ```
 
-Note that only more recent APIs have access to tool calling.
+Note that only more recent completion APIs have access to tool calling.
 
 
 ## Conversation about the weather

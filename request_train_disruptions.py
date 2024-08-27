@@ -51,6 +51,11 @@ def request_disruptions_at_station(station_code: str) -> str:
 
     # TODO hoe leert de LLM de afkortingen van stations?
 
+    # TODO geeft error bij niet bestaande stations_code
+    # API voor stationsnamen aanroepen
+
+    print("STATION CODE:", station_code)
+
     if not NS_APP_KEY:
         raise Exception("NS app key not found in .env")
 
@@ -71,6 +76,8 @@ def request_disruptions_at_station(station_code: str) -> str:
 
     # Will return [] if there are no disruptions
     disruptions = json.loads(response.text)
+
+    print("DISRUPTIONS:", disruptions)
 
     if disruptions:
         info = "\n".join(

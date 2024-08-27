@@ -1,11 +1,17 @@
 import json
 import logging
+import os
 
-from openai.types.chat import ChatCompletionMessage, ChatCompletionMessageToolCall
+from openai._types import NOT_GIVEN
+from openai.types.chat import (
+    ChatCompletion,
+    ChatCompletionMessage,
+    ChatCompletionMessageToolCall,
+)
 from tenacity import retry, stop_after_attempt, wait_random_exponential
 from termcolor import colored
 
-from chat_client import AzureOpenAIChatClient
+from chat_client import AzureOpenAIChatClient, ChatClient, RequestsClient
 from tools import available_functions
 
 logging.basicConfig(level=logging.INFO)
@@ -14,7 +20,15 @@ logger = logging.getLogger(__name__)
 # Globals
 # -------
 
-CLIENT = AzureOpenAIChatClient(deployment_name="gpt_turbo")
+DEPLOYMENT_NAME = os.getenv("DEPLOYMENT_NAME")
+assert DEPLOYMENT_NAME, "Please set the DEPLOYMENT_NAME environment variable."
+
+url = f'https://gateway.apiportal.ns.nl/genai/api/openai/deployments/{DEPLOYMENT_NAME}/chat/completions'
+logger.info("Chatting using REST API with url %s", url)
+CLIENT: ChatClient = RequestsClient(endpoint_url=url)  # NOTE currently this points to NS API portal, https://apiportal.ns.nl/
+
+# CLIENT: ChatClient = AzureOpenAIChatClient(deployment_name=DEPLOYMENT_NAME)
+# logger.info("Chatting using Azure OpenAI SDK with deployment %s", DEPLOYMENT_NAME)
 
 TOOL_CALL_SYSTEM_MESSAGE = "Don't make assumptions about what values to plug into functions. Ask for clarification if a user request is ambiguous."
 
@@ -66,7 +80,7 @@ class Conversation:
                 )
 
 
-def chat(messages: list[dict], tools=None) -> ChatCompletionMessage:
+def chat(messages: list[dict], tools=None) -> ChatCompletion:
     chat_response = chat_completion_request(messages, tools=tools)
 
     # Assistant message
@@ -80,23 +94,26 @@ def chat(messages: list[dict], tools=None) -> ChatCompletionMessage:
 
         # Create a new response that used the function call
         # Set tools=None to avoid doing another tool call.
-        chat_response = chat_completion_request(messages, tools=None)
+        chat_response = chat_completion_request(messages)
 
     return chat_response
 
 
 @retry(wait=wait_random_exponential(multiplier=1, max=40), stop=stop_after_attempt(3))
-def chat_completion_request(messages, tools=None, tool_choice=None):
+def chat_completion_request(messages, tools=None, tool_choice=None) -> ChatCompletion:
     try:
         response = CLIENT.create_completion(
             messages=messages,
             tools=tools,
             tool_choice=tool_choice,
         )
+        logger.info("CREATE COMPLETION RESPONSE %s", response)
         return response
     except Exception as exc:
+        # TODO exception omhoog trekken?
         logger.error("Unable to generate ChatCompletion response.")
         logger.error("Exception: %s", exc)
+        # raise exc from exc
         return exc
 
 

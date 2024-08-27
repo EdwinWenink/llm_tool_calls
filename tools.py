@@ -2,7 +2,12 @@
 This module contains the available tool calls
 """
 
-from request_train_disruptions import request_disruptions_at_station, request_train_disruptions
+from request_train_disruptions import (
+    request_disruptions_at_station,
+    request_train_disruptions,
+)
+
+# TODO Pydantic model for 'tools'
 
 tools = [
     {
