@@ -3,7 +3,13 @@
 Repository for experimenting with tool calls in LLMs (so far, GPTs hosted in Azure).
 This demo does not use the deprecated `function_calls` but instead uses the newer `tool_calls`.
 
-Authentication is done using AD token authorization, not with API keys.
+This demo supports completions on your own Azure OpenAI model deployment wth authentication using AD token authorization.
+This demo can also generate chat completions via REST APIs with a subscription key (although this demo currently assumes you have access to the restricted completion API of NS).
+
+The function that requests current train disruptions in the Netherlands requires access to the NS App API.
+If you make an account on the [NS API Portal](https://apiportal.ns.nl/) you can gain free access to this API as an external party, because NS is legally obliged to share all available travel information with the public.
+
+![Tool calling flow](./function-calling-diagram.png)
 
 ## Environment variables
 
@@ -18,7 +24,6 @@ DEPLOYMENT_NAME=  # Name of the model deployment generating completions
 ```
 
 Note that only more recent completion APIs have access to tool calling.
-
 
 ## Conversation about the weather
 
