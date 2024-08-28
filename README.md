@@ -10,6 +10,7 @@ The function that requests current train disruptions in the Netherlands requires
 If you make an account on the [NS API Portal](https://apiportal.ns.nl/) you can gain free access to this API as an external party, because NS is legally obliged to share all available travel information with the public.
 
 ![Tool calling flow](./function-calling-diagram.png)
+[Diagram source](https://platform.openai.com/docs/guides/function-calling)
 
 ## Environment variables
 
