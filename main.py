@@ -43,7 +43,7 @@ if __name__ == "__main__":
     run_conversation("Zijn er momenteel treinstoringen in Nederland?", tools=tools)
 
     # Ask about disruptions on a specific train station
-    run_conversation("Zijn er momenteel treinstoringen rondom station Amsterdam?", tools=tools)
+    # run_conversation("Zijn er momenteel treinstoringen rondom station Amsterdam?", tools=tools)
     # run_conversation("Zijn er momenteel treinstoringen rondom station Nijmegen?", tools=tools)
     # run_conversation("Zijn er momenteel treinstoringen rondom station Rotterdam?", tools=tools)
     # run_conversation("Zijn er momenteel treinstoringen rondom station Best?", tools=tools)

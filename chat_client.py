@@ -82,6 +82,8 @@ class RequestsClient(ChatClient):
             timeout=60
         )
 
+        print("RESPONSE:", response.json())
+
         # Cast json response in the ChatCompletion object
         completion = ChatCompletion(**response.json())
         return completion

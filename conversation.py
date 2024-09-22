@@ -6,7 +6,9 @@ from openai._types import NOT_GIVEN
 from openai.types.chat import (
     ChatCompletion,
     ChatCompletionMessage,
+    ChatCompletionMessageParam,
     ChatCompletionMessageToolCall,
+    ChatCompletionMessageToolCallParam,
 )
 from tenacity import retry, stop_after_attempt, wait_random_exponential
 from termcolor import colored
@@ -37,10 +39,9 @@ class Conversation:
     """Class to track the conversation history and display the chat in human readable form."""
 
     def __init__(self):
-        self.history = []
+        self.history: list[ChatCompletionMessageParam] = []
 
-    def add_message(self, role, content):
-        message = {"role": role, "content": content}
+    def add_message(self, message: ChatCompletionMessageParam):
         self.history.append(message)
 
     def pretty_print_conversation(self):
@@ -80,45 +81,52 @@ class Conversation:
                 )
 
 
-def chat(messages: list[dict], tools=None) -> ChatCompletion:
-    chat_response = chat_completion_request(messages, tools=tools)
-
-    # Assistant message
-    choice = chat_response.choices[0]
-
-    # Check if a tool call is required
-    if choice.finish_reason == "tool_calls":
-        logger.info("Tool call requested, calling function")
-        function_message = handle_tool_call(choice.message)
-        messages.append(function_message)
-
-        # Create a new response that used the function call
-        # Set tools=None to avoid doing another tool call.
-        chat_response = chat_completion_request(messages)
-
-    return chat_response
-
-
-@retry(wait=wait_random_exponential(multiplier=1, max=40), stop=stop_after_attempt(3))
-def chat_completion_request(messages, tools=None, tool_choice=None) -> ChatCompletion:
+def chat(conversation: Conversation, tools=None) -> ChatCompletion:
     try:
-        response = CLIENT.create_completion(
-            messages=messages,
-            tools=tools,
-            tool_choice=tool_choice,
-        )
-        logger.info("CREATE COMPLETION RESPONSE %s", response)
-        return response
+        chat_response = chat_completion_request(conversation.history, tools=tools)
+
+        # Assistant message
+        choice = chat_response.choices[0]
+
+        # Check if a tool call is required
+        if choice.finish_reason == "tool_calls":
+
+            tool_param = choice.message.tool_calls[0].model_dump()
+            conversation.add_message({"role": "assistant", "tool_calls": [tool_param], "content": None})  # NOTE content is optional in recent API
+
+            logger.info("Tool call requested, calling function")
+            function_message = handle_tool_call(choice.message)
+            conversation.add_message(function_message)
+
+            # Create a new response that used the function call
+            # Set tools=None to avoid doing another tool call.
+            chat_response = chat_completion_request(conversation.history)
+
+        # TODO add
+
+        return chat_response
     except Exception as exc:
-        # TODO exception omhoog trekken?
         logger.error("Unable to generate ChatCompletion response.")
         logger.error("Exception: %s", exc)
-        # raise exc from exc
         return exc
+
+
+# @retry(wait=wait_random_exponential(multiplier=1, max=40), stop=stop_after_attempt(3))
+def chat_completion_request(messages, tools=None, tool_choice=None) -> ChatCompletion:
+    response = CLIENT.create_completion(
+        messages=messages,
+        tools=tools,
+        tool_choice=tool_choice,
+    )
+    logger.info("CREATE COMPLETION RESPONSE %s", response)
+    return response
 
 
 def handle_tool_call(message: ChatCompletionMessage):
     """NOTE for now not parallel, only handles the first relevant tool call"""
+
+    # TODO specify return model
+
     # Do nothing if no tool calls are asked for
     if not message.tool_calls:
         return
@@ -133,10 +141,11 @@ def handle_tool_call(message: ChatCompletionMessage):
         callable_function = available_functions[function_name]
         function_result = callable_function(**arguments)
 
+        # TODO use role "tool" and delete "name"
         function_message = {
-            "role": "function",
+            "role": "tool",
             "tool_call_id": tool_call_id,
-            "name": function_name,
+            # "name": function_name,
             "content": function_result,
         }
         return function_message
@@ -147,15 +156,15 @@ def handle_tool_call(message: ChatCompletionMessage):
 
 def run_conversation(user_query: str, tools=None):
     conversation = Conversation()
-    conversation.add_message("system", TOOL_CALL_SYSTEM_MESSAGE)
+    conversation.add_message({"role": "system", "content": TOOL_CALL_SYSTEM_MESSAGE})
 
     # User query
-    conversation.add_message("user", user_query)
-    chat_response = chat(conversation.history, tools=tools)
+    conversation.add_message({"role": "user", "content": user_query})
+    chat_response = chat(conversation, tools=tools)
 
     # Answer of the assistant, including tool call
     assistant_message = chat_response.choices[0].message.content
-    conversation.add_message("assistant", assistant_message)
+    conversation.add_message({"role": "assistant", "content": assistant_message})
 
     # Detailed inspection of all completion objects
     print("All completions:\n----------------")
