@@ -102,9 +102,10 @@ def chat(conversation: Conversation, tools=None) -> ChatCompletion:
             # Set tools=None to avoid doing another tool call.
             chat_response = chat_completion_request(conversation.history)
 
-        # TODO add
+        # Answer of the assistant, including tool call
+        assistant_message = chat_response.choices[0].message.content
+        conversation.add_message({"role": "assistant", "content": assistant_message})
 
-        return chat_response
     except Exception as exc:
         logger.error("Unable to generate ChatCompletion response.")
         logger.error("Exception: %s", exc)
@@ -160,11 +161,7 @@ def run_conversation(user_query: str, tools=None):
 
     # User query
     conversation.add_message({"role": "user", "content": user_query})
-    chat_response = chat(conversation, tools=tools)
-
-    # Answer of the assistant, including tool call
-    assistant_message = chat_response.choices[0].message.content
-    conversation.add_message({"role": "assistant", "content": assistant_message})
+    chat(conversation, tools=tools)
 
     # Detailed inspection of all completion objects
     print("All completions:\n----------------")
