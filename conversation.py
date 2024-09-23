@@ -92,7 +92,8 @@ def chat(conversation: Conversation, tools=None) -> ChatCompletion:
         if choice.finish_reason == "tool_calls":
 
             tool_param = choice.message.tool_calls[0].model_dump()
-            conversation.add_message({"role": "assistant", "tool_calls": [tool_param], "content": None})  # NOTE content is optional in recent API
+            # `content` is optional only if `tool_calls` is provided
+            conversation.add_message({"role": "assistant", "tool_calls": [tool_param]})
 
             logger.info("Tool call requested, calling function")
             function_message = handle_tool_call(choice.message)
