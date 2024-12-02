@@ -6,6 +6,7 @@ from request_train_disruptions import (
     request_disruptions_at_station,
     request_train_disruptions,
 )
+from team_centraal import get_team_info, who_is
 
 # TODO Pydantic model for 'tools'
 
@@ -61,6 +62,42 @@ tools = [
             },
         },
     },
+    # Who is who functionality
+    {
+        "type": "function",
+        "function": {
+            "name": "who_is",
+            "description": "Get information about who a person at the Nederlandse Spoorwegen (NS) is",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "name": {
+                        "type": "string",
+                        "description": "The first or last name of the person to look up, but not both!",
+                    }
+                },
+                "required": ["name"],
+            },
+        },
+    },
+
+    {
+        "type": "function",
+        "function": {
+            "name": "get_team_info",
+            "description": "Get information about a team at the Nederlandse Spoorwegen (NS), including its members, the applications they work on, and the department they belong to.",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "team_name": {
+                        "type": "string",
+                        "description": "The name of the team.",
+                    }
+                },
+                "required": ["name"],
+            },
+        },
+    }
 ]
 
 

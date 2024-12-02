@@ -1,19 +1,18 @@
+import inspect
 import json
 import logging
 import os
+from typing import Callable
 
-from openai._types import NOT_GIVEN
 from openai.types.chat import (
     ChatCompletion,
     ChatCompletionMessage,
     ChatCompletionMessageParam,
     ChatCompletionMessageToolCall,
-    ChatCompletionMessageToolCallParam,
 )
-from tenacity import retry, stop_after_attempt, wait_random_exponential
 from termcolor import colored
 
-from chat_client import AzureOpenAIChatClient, ChatClient, RequestsClient
+from chat_client import ChatClient, RequestsClient
 from tools import available_functions
 
 logging.basicConfig(level=logging.INFO)
@@ -21,18 +20,22 @@ logger = logging.getLogger(__name__)
 
 # Globals
 # -------
-
 DEPLOYMENT_NAME = os.getenv("DEPLOYMENT_NAME")
 assert DEPLOYMENT_NAME, "Please set the DEPLOYMENT_NAME environment variable."
 
-url = f'https://gateway.apiportal.ns.nl/genai/api/openai/deployments/{DEPLOYMENT_NAME}/chat/completions'
+url = f"https://gateway.apiportal.ns.nl/genai/api/openai/deployments/{DEPLOYMENT_NAME}/chat/completions"
 logger.info("Chatting using REST API with url %s", url)
-CLIENT: ChatClient = RequestsClient(endpoint_url=url)  # NOTE currently this points to NS API portal, https://apiportal.ns.nl/
+CLIENT: ChatClient = RequestsClient(
+    endpoint_url=url
+)  # NOTE currently this points to NS API portal, https://apiportal.ns.nl/
 
 # CLIENT: ChatClient = AzureOpenAIChatClient(deployment_name=DEPLOYMENT_NAME)
 # logger.info("Chatting using Azure OpenAI SDK with deployment %s", DEPLOYMENT_NAME)
 
 TOOL_CALL_SYSTEM_MESSAGE = "Don't make assumptions about what values to plug into functions. Ask for clarification if a user request is ambiguous."
+
+
+InvalidToolCallException = Exception("Invalid tool call. Please check the tool call parameters.")
 
 
 class Conversation:
@@ -58,9 +61,17 @@ class Conversation:
                 message = message.model_dump()
 
             if message["role"] == "system":
-                print(colored(f"System: {message['content']}", role_to_color[message["role"]]))
+                print(
+                    colored(
+                        f"System: {message['content']}", role_to_color[message["role"]]
+                    )
+                )
             elif message["role"] == "user":
-                print(colored(f"User: {message['content']}", role_to_color[message["role"]]))
+                print(
+                    colored(
+                        f"User: {message['content']}", role_to_color[message["role"]]
+                    )
+                )
             elif message["role"] == "assistant" and message.get("tool_calls"):
                 for tool_call in message.get("tool_calls"):
                     function = tool_call["function"]
@@ -71,7 +82,12 @@ class Conversation:
                         )
                     )
             elif message["role"] == "assistant" and not message.get("tool_calls"):
-                print(colored(f"Assistant: {message['content']}", role_to_color[message["role"]]))
+                print(
+                    colored(
+                        f"Assistant: {message['content']}",
+                        role_to_color[message["role"]],
+                    )
+                )
             elif message["role"] == "function":
                 print(
                     colored(
@@ -81,7 +97,7 @@ class Conversation:
                 )
 
 
-def chat(conversation: Conversation, tools=None) -> ChatCompletion:
+def chat(conversation: Conversation, tools=None):
     try:
         chat_response = chat_completion_request(conversation.history, tools=tools)
 
@@ -90,7 +106,6 @@ def chat(conversation: Conversation, tools=None) -> ChatCompletion:
 
         # Check if a tool call is required
         if choice.finish_reason == "tool_calls":
-
             tool_param = choice.message.tool_calls[0].model_dump()
             # `content` is optional only if `tool_calls` is provided
             conversation.add_message({"role": "assistant", "tool_calls": [tool_param]})
@@ -124,6 +139,25 @@ def chat_completion_request(messages, tools=None, tool_choice=None) -> ChatCompl
     return response
 
 
+# helper method used to check if the correct arguments are provided to a function
+def validate_tool_args(function: Callable, args: dict):
+    """
+    Before calling a function, check if the arguments provided by the LLM are valid.
+    """
+    sig = inspect.signature(function)
+    params = sig.parameters
+
+    # Check if there are extra arguments
+    for name in args:
+        if name not in params:
+            raise InvalidToolCallException
+
+    # Check if the required arguments are provided
+    for name, param in params.items():
+        if param.default is param.empty and name not in args:
+            raise InvalidToolCallException
+
+
 def handle_tool_call(message: ChatCompletionMessage):
     """NOTE for now not parallel, only handles the first relevant tool call"""
 
@@ -141,9 +175,13 @@ def handle_tool_call(message: ChatCompletionMessage):
         arguments = json.loads(tool_call.function.arguments)
 
         callable_function = available_functions[function_name]
+
+        # Validate the function arguments before calling
+        validate_tool_args(callable_function, arguments)
+
         function_result = callable_function(**arguments)
 
-        # TODO use role "tool" and delete "name"
+        # NOTE the old "function_call" API had a "name" field, but the new "tool_call" API does not.
         function_message = {
             "role": "tool",
             "tool_call_id": tool_call_id,

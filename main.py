@@ -1,27 +1,6 @@
 from conversation import run_conversation
 from tools import tools
 
-# TODO validate arguments of a function call
-"""
-import inspect
-
-# helper method used to check if the correct arguments are provided to a function
-def check_args(function, args):
-    sig = inspect.signature(function)
-    params = sig.parameters
-
-    # Check if there are extra arguments
-    for name in args:
-        if name not in params:
-            return False
-    # Check if the required arguments are provided
-    for name, param in params.items():
-        if param.default is param.empty and name not in args:
-            return False
-
-    return True
-"""
-
 if __name__ == "__main__":
     """
     # For this weather query, a tool call is available
@@ -40,7 +19,15 @@ if __name__ == "__main__":
 
     # Related to the train disruptions call
     # run_conversation("Zijn er momenteel treinstoringen?", tools=tools)
-    run_conversation("Zijn er momenteel treinstoringen in Nederland?", tools=tools)
+    # run_conversation("Zijn er momenteel treinstoringen in Nederland?", tools=tools)
+
+    # run_conversation("Wie is Thomas Strikwerda?", tools=tools)
+    # run_conversation("Wie is Eric?", tools=tools)
+    # run_conversation("Wie is Eric Paape?", tools=tools)
+    # run_conversation("Wie is Hankie Pankie?", tools=tools)
+
+    # Team
+    run_conversation("Wat is team Knipteam?", tools=tools)
 
     # Ask about disruptions on a specific train station
     # run_conversation("Zijn er momenteel treinstoringen rondom station Amsterdam?", tools=tools)
