@@ -27,11 +27,12 @@ if __name__ == "__main__":
     # run_conversation("Wie is Eric?", tools=tools)
     # run_conversation("Wie is Eric Paape?", tools=tools)
     # run_conversation("Wie is Hankie Pankie?", tools=tools)
-    run_conversation("Wie is Leo van der Meulen?", tools=tools)
+    # run_conversation("Wie is Leo van der Meulen?", tools=tools)
+    run_conversation("Wie is Justin van Tatenhove?", tools=tools)
 
     # Team
     # run_conversation("Wat is team Knipteam?", tools=tools)
-    # run_conversation("Wat is team DIA.SIMBA?", tools=tools)
+    run_conversation("Wat is team DIA.SIMBA?", tools=tools)
 
     # Ask about disruptions on a specific train station
     # run_conversation("Zijn er momenteel treinstoringen rondom station Amsterdam?", tools=tools)

@@ -25,7 +25,7 @@ class Rol(BaseModel):
 
 class DepartmentFinalBase(BaseModel):
     ID: int
-    DepartmentId: int | None
+    DepartmentId: str | None
     Parent: str | None
     Active: bool | None
     Name: str
@@ -96,7 +96,7 @@ class TeamCentraalTeam(BaseModel):
     WorkingOnApplications: str | None
     # Expand options
     Team_Department: DepartmentFinalBase | None = None
-    Team_Members: list[TeamMemberBase] | None = None
+    TeamMembers: list[TeamMemberBase] | None = None
 
 
 class TeamCentraalBetrokkeneResponse(BaseModel):
@@ -167,6 +167,8 @@ def find_team_member(name: str) -> str:
     """
     Queries "TeamMembers" on a person to retrieve the Team information for that person.
     Differs from "Betrokkenens" because these are not necessarily part of a team.
+    It may be the case that a query returns multiple persons, for example with the same surname.
+    In this case we return all information. The LLM is capable of selecting the information it needs from the original query.
     """
     endpoint = f"{BASE_URL}/TeamMembers?$expand=Account&$filter=contains(Account/FullName, '{name}')&$expand=Account,TeamMember_Team,FunctieRols"
     headers = {
@@ -201,26 +203,21 @@ def find_team_member(name: str) -> str:
                 print(i)
                 print(team)
 
-        # TODO handle situation where multiple persons are found.
-
         def _generate_answer(team_member: TeamMemberBase):
             name = team_member.Account.FullName
             team = team_member.TeamMember_Team
             team_naam = team.Naam
             team_category = team.TeamCategory
-            applicaties = team.WorkingOnApplications
-            projecten = team.Projecten
-            team_omschrijving = team.OmschrijvingTeam
-            team_omschrijving_snow = team.OmschrijvingTeamServiceNow
-            vaardigheden = team.Vaardigheden
+            applicaties = team.WorkingOnApplications if team.WorkingOnApplications else ""
+            projecten = team.Projecten if team.Projecten else ""
+            team_omschrijving = team.OmschrijvingTeam if team.OmschrijvingTeam else ""
+            team_omschrijving_snow = team.OmschrijvingTeamServiceNow  if team.OmschrijvingTeamServiceNow else ''
+            vaardigheden = team.Vaardigheden if team.Vaardigheden else ''
             functie_rols = team_member.FunctieRols
             functie_beschrijving = "\n".join(
-                [functie.RolNaam for functie in functie_rols]
+                [functie.RolNaam if functie.RolNaam != 'Overig' else 'teamlid'for functie in functie_rols]
             )
-
-            # TODO via deze route ook JOB?
-
-            answer = f"{name} heeft de rol {functie_beschrijving} binnen team {team_naam}, een {team_category} dat werkt aan {applicaties}{projecten}. Team beschrijving: {team_omschrijving if team_omschrijving else ''}{team_omschrijving_snow if team_omschrijving_snow else ''}. Team skills: {vaardigheden if vaardigheden else ''}"
+            answer = f"{name} heeft de rol {functie_beschrijving} binnen team {team_naam}, een {team_category} dat werkt aan {applicaties}{projecten}. Team beschrijving: {team_omschrijving}{team_omschrijving_snow}. Team skills: {vaardigheden}"
             return answer
 
         answer = "\n".join(
@@ -250,26 +247,34 @@ def get_team_info(team_name: str) -> str:
     print(response.status_code)
     print(response.json())
 
+    def _generate_answer(team: TeamCentraalTeam):
+        department = team.Team_Department.Name if team.Team_Department else ""
+        team_members = ",".join([member.Account.FullName for member in team.TeamMembers])
+
+        team_naam = team.Naam
+        team_category = team.TeamCategory
+        applicaties = team.WorkingOnApplications if team.WorkingOnApplications else ""
+        projecten = team.Projecten if team.Projecten else ""
+        team_omschrijving = team.OmschrijvingTeam if team.OmschrijvingTeam else ""
+        team_omschrijving_snow = team.OmschrijvingTeamServiceNow  if team.OmschrijvingTeamServiceNow else ''
+        vaardigheden = team.Vaardigheden if team.Vaardigheden else ''
+
+        answer = f"{team_naam} is een {team_category} team op de afdeling {department} dat werkt aan {applicaties} {projecten}."\
+                    f"Beschrijving: {team_omschrijving}{team_omschrijving_snow}."\
+                    f"Team skills: {vaardigheden}. De team leden zijn: {team_members}"
+
+        return answer
+
+
     if response.status_code == 200:
         validated_response = TeamCentraalTeamResponse.model_validate(response.json())
-        teams = validated_response.value
-        # TODO add department
-        # TODO add members
-        answer = "\n".join(
-            [
-                f"{team.Naam} is een {team.TeamCategory} team dat werkt aan {team.WorkingOnApplications if team.WorkingOnApplications else ''} {team.Projecten if team.Projecten else ''}."
-                f"Beschrijving: {team.OmschrijvingTeamServiceNow if team.OmschrijvingTeamServiceNow else ''}{team.OmschrijvingTeam if team.OmschrijvingTeam else ''}"
-                f"Skills: {team.Vaardigheden if team.Vaardigheden else ''}"
-                for team in teams
-            ]
-        )
+        teams: list[TeamCentraalTeam] = validated_response.value
+        answer = "\n".join([_generate_answer(team) for team in teams ])
         return answer
     else:
         return "Team is not found"
 
 
 if __name__ == "__main__":
-    # print(who_is("Strikwerda"))
-    # print(get_team_info("Knipteam"))
-    # print(find_team_member("Wenink"))
-    print(find_team_member("Van der Meulen, Leo"))
+    print(find_team_member("Wenink, Edwin"))
+    print(get_team_info("DIA.SIMBA"))

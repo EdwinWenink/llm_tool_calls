@@ -2,8 +2,10 @@
 This module contains the available tool calls
 """
 
-from request_train_disruptions import (request_disruptions_at_station,
-                                       request_train_disruptions)
+from request_train_disruptions import (
+    request_disruptions_at_station,
+    request_train_disruptions,
+)
 from team_centraal import find_team_member, get_team_info
 
 _ = get_team_info
