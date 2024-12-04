@@ -2,11 +2,11 @@
 This module contains the available tool calls
 """
 
-from request_train_disruptions import (
-    request_disruptions_at_station,
-    request_train_disruptions,
-)
-from team_centraal import get_team_info, who_is
+from request_train_disruptions import (request_disruptions_at_station,
+                                       request_train_disruptions)
+from team_centraal import find_team_member, get_team_info
+
+_ = get_team_info
 
 # TODO Pydantic model for 'tools'
 
@@ -66,21 +66,20 @@ tools = [
     {
         "type": "function",
         "function": {
-            "name": "who_is",
-            "description": "Get information about who a person at the Nederlandse Spoorwegen (NS) is",
+            "name": "get_team_member",
+            "description": "Get information about who a person at the Nederlandse Spoorwegen (NS) is and to which team he or she belongs. Also describes the team and its skills and ambitions.",
             "parameters": {
                 "type": "object",
                 "properties": {
                     "name": {
                         "type": "string",
-                        "description": "The first or last name of the person to look up, but not both!",
+                        "description": "Either the first or last name of the person to look up, but not both!.",
                     }
                 },
                 "required": ["name"],
             },
         },
     },
-
     {
         "type": "function",
         "function": {
@@ -97,7 +96,7 @@ tools = [
                 "required": ["name"],
             },
         },
-    }
+    },
 ]
 
 
@@ -115,8 +114,15 @@ def get_disruptions_for_train_station(station_code: str) -> str:
     return request_disruptions_at_station(station_code)
 
 
+def get_team_member(name: str) -> str:
+    # TODO possibly do extra handling here in case there are multiple persons.
+    return find_team_member(name)
+
+
 # Dynamically generate mapping of available functions
 # This assumes the function name in the tool call is identical to the function def
 function_names = [tool["function"]["name"] for tool in tools]
 
-available_functions = {function_name: globals()[function_name] for function_name in function_names}
+available_functions = {
+    function_name: globals()[function_name] for function_name in function_names
+}

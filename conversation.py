@@ -4,12 +4,9 @@ import logging
 import os
 from typing import Callable
 
-from openai.types.chat import (
-    ChatCompletion,
-    ChatCompletionMessage,
-    ChatCompletionMessageParam,
-    ChatCompletionMessageToolCall,
-)
+from openai.types.chat import (ChatCompletion, ChatCompletionMessage,
+                               ChatCompletionMessageParam,
+                               ChatCompletionMessageToolCall)
 from termcolor import colored
 
 from chat_client import ChatClient, RequestsClient
@@ -32,10 +29,12 @@ CLIENT: ChatClient = RequestsClient(
 # CLIENT: ChatClient = AzureOpenAIChatClient(deployment_name=DEPLOYMENT_NAME)
 # logger.info("Chatting using Azure OpenAI SDK with deployment %s", DEPLOYMENT_NAME)
 
-TOOL_CALL_SYSTEM_MESSAGE = "Don't make assumptions about what values to plug into functions. Ask for clarification if a user request is ambiguous."
+TOOL_CALL_SYSTEM_MESSAGE = "Don't make assumptions about what values to plug into functions. Ask for clarification if a user request is ambiguous. Answer in Dutch. When providing names to functions, ignore prefixes for surnames."
 
 
-InvalidToolCallException = Exception("Invalid tool call. Please check the tool call parameters.")
+InvalidToolCallException = Exception(
+    "Invalid tool call. Please check the tool call parameters."
+)
 
 
 class Conversation:
